@@ -1,0 +1,130 @@
+---
+title: "PCAPlantSynergy"
+author: "Erola Fenollosa"
+date: "2024-02-26"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Build a PCA
+
+## 1. Import the dataset and libraries
+It must be stored at the same folder of the R code.
+```{r}
+# Remember to first do install.packages()
+library(tidyverse) # Data Handling
+library(GGally) # Correlation plots
+library(factoextra) # PCA visualizations
+
+pizza <- read.csv("Pizza.csv")
+head(pizza)
+```
+
+The dataset was downloaded from this link: https://data.world/sdhilip/pizza-datasets and it contains information on the micronutrients of various pizzas.
+
+The variables in the data set are:
+
+brand - Pizza brand (class label)
+id - Sample analised
+mois - Amount of water per 100 grams in the sample
+prot - Amount of protein per 100 grams in the sample
+fat - Amount of fat per 100 grams in the sample
+ash - Amount of ash per 100 grams in the sample
+sodium - Amount of sodium per 100 grams in the sample
+carb - Amount of carbohydrates per 100 grams in the sample
+cal - Amount of calories per 100 grams in the sample
+
+## 2. Exploratory Data Analysis
+```{r}
+summary(pizza) 
+```
+
+```{r}
+table(pizza$brand) 
+```
+
+Missing values in the data set:
+```{r}
+apply(pizza[1:length(colnames(pizza))],2, anyNA)
+```
+Delete the variable called "id"
+```{r}
+pizza2 <- subset(pizza, select = -c(id))
+head(pizza2)
+```
+```{r}
+pizza2 %>% 
+  gather("micronutritions", "value", 2:8) %>% 
+  ggplot(aes(x = brand, y = value, fill = brand)) +
+    geom_boxplot() +
+    ggtitle("Histograms of micronutritions") +
+    xlab("Brands") +
+    ylab("Values") +
+    theme_bw() +
+    theme(plot.title = element_text(hjust = 0.5, size = 14)) +
+    facet_wrap(~ micronutritions, scales = "free")
+
+cor_pizza <- cor(pizza[, 2:length(pizza)])
+ggcorr(cor_pizza, label = T, label_round = 2)
+```
+
+## 3. PCA
+
+### 3.1. Variance explained
+```{r}
+basic_PCA <- prcomp(pizza[,-1], center = TRUE, scale = TRUE)
+summary(basic_PCA)
+```
+```{r}
+fviz_screeplot(basic_PCA, addlabels = TRUE)
+```
+
+### 3.2. Variables contribution to each component
+```{r}
+fviz_pca_var(basic_PCA, col.var = "contrib", repel = TRUE, axes = c(1, 3)) +
+  labs(title="Variables loading for PC1 and PC2", x="PC1", y="PC2")
+```
+
+```{r}
+fviz_contrib(basic_PCA, choice = "var", axes = 1)
+fviz_contrib(basic_PCA, choice = "var", axes = 2)
+```
+
+```{r}
+# Results for Variables
+res.var <- get_pca_var(basic_PCA)
+round(res.var$contrib,4)        # contains the contributions (in percentage) of the variables to the principal components.
+```
+
+
+
+
+### 3.3 PCA visualization
+```{r}
+fviz_pca_ind(basic_PCA)
+
+fviz_pca_biplot(basic_PCA, 
+                col.var = "#2E9FDF", # Variables color
+                col.ind = "#696969")  # Individuals color               
+
+
+fviz_pca_ind(basic_PCA,
+             geom.ind = "point", # show points only (nbut not "text")
+             col.ind = pizza2$brand, # color by groups
+             palette = c("#00AFBB", "#E7B800", "#FC4E07","#2E9FDF", "#696969", "black", "steelblue", "pink", "coral", "lightgreen"),
+             addEllipses = TRUE, # Concentration ellipses
+             legend.title = "Groups") + scale_shape_manual(values=c(19, 19, 19, 19, 19, 19, 19, 19, 19, 19))
+
+fviz_pca_ind(basic_PCA,
+             geom = "point", # show points only (nbut not "text")
+             col.ind = pizza2$brand, # color by groups
+             palette = c("#00AFBB", "#E7B800", "#FC4E07","#2E9FDF", "#696969", "black", "steelblue", "pink", "coral", "lightgreen"),
+             addEllipses = TRUE, ellipse.type = "confidence",
+             legend.title = "Groups") + scale_shape_manual(values=c(19, 19, 19, 19, 19, 19, 19, 19, 19, 19))
+
+
+```
+
